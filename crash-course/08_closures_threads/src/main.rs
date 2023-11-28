@@ -102,7 +102,7 @@ fn main() {
     handle_a.join().unwrap();
     handle_b.join().unwrap();
     
-    reproduce_previous_exercise();
+    reproduce_previous_exercise_ordering_messages();
 
     // Challenge: Make two child threads and give them each a receiving end to a channel.  From the
     // main thread loop through several values and print each out and then send it to the channel.
@@ -148,7 +148,7 @@ fn main() {
         
 }
 
-fn reproduce_previous_exercise() {
+fn reproduce_previous_exercise_ordering_messages() {
     let (tx, rx) = channel::unbounded::<String>();
 
     let other_tx: channel::Sender<String> = tx.clone();
