@@ -1,23 +1,27 @@
-use std::error::Error;
-use rusty_audio::Audio;
+use std::io::{stdout, Stdout, self};
 
-fn main() -> Result<(), Box<dyn Error>> {
-    let mut audio = setup_game_audio();
-    
-    Ok(())
-}
+use crossterm::{terminal::EnterAlternateScreen, ExecutableCommand, cursor::{Hide, self}};
 
-fn setup_game_audio() -> Audio {
-    let mut audio = Audio::new();
+fn main() {
+    let mut audio = rusty_audio::Audio::new();
+    vec![("win","win.wav"),
+        ("startup","startup.wav"),
+        ("move","move.wav"),
+        ("explode","explode.wav"),
+        ("pew","pew.wav"),
+        ("lose","lose.wav"), 
+        ].iter()
+        .for_each(|track| audio.add(track.0, track.1));
 
-    vec![("explode", "explode.wav"),
-    ("lose", "lose.wav"),
-    ("move", "move.wav"),
-    ("pew", "pew.wav"),
-    ("startup", "startup.wav"),
-    ("win", "win.wav"),
-    ].iter()
-    .for_each(|value| audio.add(value.0, value.1));
+    let mut stdout = io::stdout();
+    match stdout.execute(EnterAlternateScreen) {
+        Ok(_) => {},
+        Err(e) => println!("{:?}", e)
+    };
+    stdout.execute(cursor::Hide).unwrap();
 
-    audio
+    audio.play("startup");
+
+    audio.wait();
+
 }
