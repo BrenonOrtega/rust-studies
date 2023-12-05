@@ -1,10 +1,11 @@
-use crate::frame::Frame;
+use crate::frame::{Frame, Drawable};
+use crate::shot::Shot;
 use crate::{NUMBER_ROWS, NUMBER_COLUMNS};
-use crate::render::Drawable;
 
 pub struct Player {
     x_index: usize,
-    y_index: usize
+    y_index: usize,
+    shots: Vec<Shot>
 }
 
 impl Player {
@@ -12,6 +13,7 @@ impl Player {
         Player { 
             x_index: NUMBER_COLUMNS / 2,
             y_index: NUMBER_ROWS - 1, 
+            shots: Vec::new()
         }
     }
 
@@ -27,13 +29,23 @@ impl Player {
         self.x_index += 1;
     }
 
-    pub fn shoot(&self) {
-        println!("tried to shoot - not implemented");
+    pub fn shoot(&mut self) -> bool {
+        if self.shots.len() < 3 {
+            self.shots.push(Shot::new(self.x_index, self.y_index));
+            
+            return true;
+        }
+        
+        false
     }
 }
 
 impl Drawable for Player {
     fn draw(&self, frame: &mut Frame) {
         frame[self.x_index][self.y_index] = "A";
+
+        self.shots.iter().for_each(|shot: &Shot| {
+            shot.draw(frame);
+        });
     }
 }

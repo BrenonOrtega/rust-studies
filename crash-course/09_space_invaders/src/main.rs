@@ -6,12 +6,13 @@ use crossterm::{
     event::{self, Event, KeyCode}};
 
 use rusty_audio::Audio;
-use space_invaders::{frame::{Frame, new_frame}, render::{self, render, Drawable}, player::Player};
+use space_invaders::{frame::{Frame, new_frame, Drawable}, render::{self, render}, player::Player};
 
 fn main() -> Result<(), Error> {
     let mut audio = setup_audio();
     let stdout = setup_game_screen();
-    thread::sleep(Duration::from_millis(7_000));
+    
+    //thread::sleep(Duration::from_millis(7_000));
     audio.play("startup");
 
     game_loop(&mut audio);
@@ -30,7 +31,7 @@ fn setup_audio() -> rusty_audio::prelude::Audio {
         ("pew","pew.wav"),
         ("lose","lose.wav"), 
         ].iter()
-        .for_each(|track| audio.add(track.0, track.1));
+        .for_each(|track: &(&str, &str)| audio.add(track.0, track.1));
     audio
 }
 
@@ -64,7 +65,11 @@ fn game_loop(audio: &mut Audio) {
 
                         KeyCode::Right => player.move_right(),
                         
-                        KeyCode::Char(' ') | KeyCode::Up => player.shoot(),
+                        KeyCode::Char(' ') | KeyCode::Up => { 
+                            if player.shoot() {
+                                audio.play("pew");
+                           };
+                        },
 
                         _ => {}
                     }
@@ -99,7 +104,7 @@ fn get_frame_rendering_sender() -> (JoinHandle<()>, Sender<Frame>) {
                     render(stdout, &curr_frame, &last_frame, false);
                     last_frame = curr_frame;
                 },
-                Err(e) => {
+                Err(_e) => {
                     break;
                 },
             };
