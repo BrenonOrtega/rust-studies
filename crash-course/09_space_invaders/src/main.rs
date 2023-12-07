@@ -1,12 +1,22 @@
-use std::{io::{Stdout, self, stdout}, fmt::Error, sync::mpsc::{self, Sender}, thread::{self, JoinHandle}, time::Duration};
+use rusty_audio::Audio;
+
+use std::{io::{Stdout, self, stdout},
+    fmt::Error, sync::mpsc::{self, Sender},
+    thread::{self, JoinHandle},
+    time::{Duration, Instant},
+    ops::ControlFlow};
+
 use crossterm::{
     ExecutableCommand, 
     cursor,
     terminal::{EnterAlternateScreen, self, LeaveAlternateScreen},
     event::{self, Event, KeyCode}};
 
-use rusty_audio::Audio;
-use space_invaders::{frame::{Frame, new_frame, Drawable}, render::{self, render}, player::Player};
+use space_invaders::{
+    frame::{Frame, new_frame, Drawable},
+    render::{self, render, Updatable},
+    player::Player,
+    invaders::Invaders};
 
 fn main() -> Result<(), Error> {
     let mut audio = setup_audio();
@@ -47,42 +57,33 @@ fn setup_game_screen() -> Stdout {
 
 fn game_loop(audio: &mut Audio) {
     let (thread, tx) = get_frame_rendering_sender();
+    
     let mut player = Player::new();
+    let mut invaders = Invaders::new();
+    let mut instant = Instant::now();
 
     'gameloop: loop {
+        let delta = instant.elapsed();
+        
         while event::poll(Duration::default()).unwrap() {
             let event: Event = event::read().unwrap();
             
-            match event {
-                Event::Key(key_event) => {
-                    match key_event.code {
-                        KeyCode::Esc | KeyCode::Char('q') => {
-                            audio.play("lose");
-                            break 'gameloop;
-                        },
-
-                        KeyCode::Left => player.move_left(),
-
-                        KeyCode::Right => player.move_right(),
-                        
-                        KeyCode::Char(' ') | KeyCode::Up => { 
-                            if player.shoot() {
-                                audio.play("pew");
-                           };
-                        },
-
-                        _ => {}
-                    }
-                },
-                _ => {}
-            } 
-
-            let mut frame = new_frame();
-            player.draw(&mut frame);
-
-            let _ = tx.send(frame);
-            thread::sleep(Duration::from_millis(6));
+            if let ControlFlow::Break(_) = handle_key_press(event, audio, &mut player) {
+                break 'gameloop;
+            }
         }
+        
+        update_all(vec![&mut player, &mut invaders], delta);
+        
+        instant = Instant::now();
+
+        let mut frame = new_frame();
+
+        let drawables: Vec<&dyn Drawable> = vec![&player, &invaders];
+        drawables.iter().for_each(|a| a.draw(&mut frame));
+        
+        let _ = tx.send(frame);
+        thread::sleep(Duration::from_millis(10));
     }  
 
     drop(tx);
@@ -90,8 +91,40 @@ fn game_loop(audio: &mut Audio) {
 }
 
 
+fn update_all(mut updatables: Vec<&mut dyn Updatable>, delta: Duration) {
+    updatables.iter_mut()
+        .for_each(|updatable| updatable.update(&delta));
+}
+
+fn handle_key_press(event: Event, audio: &mut Audio, player: &mut Player) -> ControlFlow<()> {
+        if let Event::Key(key_event) = event {
+            match key_event.code {
+                KeyCode::Esc | KeyCode::Char('q') => {
+                    audio.play("lose");
+                    return ControlFlow::Break(());
+                },
+
+                KeyCode::Left => player.move_left(),
+
+                KeyCode::Right => player.move_right(),
+            
+                KeyCode::Char(' ') | KeyCode::Up => { 
+                    if player.shoot() {
+                        audio.play("pew");
+                   };
+                },
+
+                _ => {}
+            }
+        }
+
+    ControlFlow::Continue(())
+}
+
+
 fn get_frame_rendering_sender() -> (JoinHandle<()>, Sender<Frame>) {
     let (handle_tx, handle_rx) = mpsc::channel::<Frame>();
+    
     let thread = thread::spawn(move || {
         let mut last_frame: Frame = new_frame();
         let stdout = &mut stdout();
