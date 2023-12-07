@@ -1,4 +1,4 @@
-use std::io::{Stdout, Write};
+use std::{io::{Stdout, Write}, time::Duration};
 
 use crossterm::{QueueableCommand, 
     style::{SetBackgroundColor, Color},
@@ -32,4 +32,8 @@ fn make_terminal_blue(stdout: &mut Stdout) {
 
 pub trait Drawable {
     fn draw(&self, frame: &mut Frame);
+}
+
+pub trait Updatable {
+    fn update(&mut self, delta: &Duration);
 }
