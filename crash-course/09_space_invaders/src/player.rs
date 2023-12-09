@@ -3,7 +3,7 @@ use std::time::Duration;
 use crate::frame::{Frame, Drawable};
 use crate::render::Updatable;
 use crate::shot::Shot;
-use crate::{NUMBER_ROWS, NUMBER_COLUMNS};
+use crate::{NUMBER_ROWS, NUMBER_COLUMNS, PLAYER_FORM};
 
 pub struct Player {
     x_index: usize,
@@ -33,7 +33,7 @@ impl Player {
     }
 
     pub fn shoot(&mut self) -> bool {
-        if self.shots.len() < 3 {
+        if self.shots.len() < 20 {
             self.shots.push(Shot::new(self.x_index, self.y_index));
             
             true
@@ -46,7 +46,7 @@ impl Player {
 
 impl Drawable for Player {
     fn draw(&self, frame: &mut Frame) {
-        frame[self.x_index][self.y_index] = "A";
+        frame[self.x_index][self.y_index] = PLAYER_FORM;
 
         self.shots.iter().for_each(|shot: &Shot| {
             shot.draw(frame);
@@ -55,7 +55,7 @@ impl Drawable for Player {
 }
 
 impl Updatable for Player {
-    fn update(&mut self, delta: &Duration) {
+    fn update(&mut self, delta: &Duration, frame: &Frame) {
         self.shots.iter_mut()
             .for_each(|shot| shot.update(*delta));
         

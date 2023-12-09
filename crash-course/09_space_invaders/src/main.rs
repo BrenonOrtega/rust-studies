@@ -16,13 +16,13 @@ use space_invaders::{
     frame::{Frame, new_frame, Drawable},
     render::{self, render, Updatable},
     player::Player,
-    invaders::Invaders};
+    invaders::Invaders, NUMBER_ROWS, INVADERS_FORMS};
 
 fn main() -> Result<(), Error> {
     let mut audio = setup_audio();
     let stdout = setup_game_screen();
     
-    //thread::sleep(Duration::from_millis(7_000));
+    thread::sleep(Duration::from_millis(4_000));
     audio.play("startup");
 
     game_loop(&mut audio);
@@ -73,15 +73,24 @@ fn game_loop(audio: &mut Audio) {
             }
         }
         
-        update_all(vec![&mut player, &mut invaders], delta);
         
         instant = Instant::now();
-
+        
         let mut frame = new_frame();
 
         let drawables: Vec<&dyn Drawable> = vec![&player, &invaders];
         drawables.iter().for_each(|a| a.draw(&mut frame));
         
+        update_all(vec![&mut player, &mut invaders], delta, &frame);
+
+        let last_row: Vec<&str> = frame[NUMBER_ROWS - 1].iter().cloned().collect();
+
+        for i in last_row.iter() {
+            if INVADERS_FORMS.iter().any(|form| form == i) {
+                audio.play("lose");
+                break 'gameloop;
+            }
+        }
         let _ = tx.send(frame);
         thread::sleep(Duration::from_millis(10));
     }  
@@ -91,9 +100,9 @@ fn game_loop(audio: &mut Audio) {
 }
 
 
-fn update_all(mut updatables: Vec<&mut dyn Updatable>, delta: Duration) {
+fn update_all(mut updatables: Vec<&mut dyn Updatable>, delta: Duration, frame: &Frame) {
     updatables.iter_mut()
-        .for_each(|updatable| updatable.update(&delta));
+        .for_each(|updatable| updatable.update(&delta, &frame));
 }
 
 fn handle_key_press(event: Event, audio: &mut Audio, player: &mut Player) -> ControlFlow<()> {

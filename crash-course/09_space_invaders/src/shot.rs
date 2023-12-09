@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use rusty_time::Timer;
 
-use crate::frame::Drawable;
+use crate::{frame::Drawable, SHOT_FORM};
 
 pub struct Shot {
     x_index: usize,
@@ -40,6 +40,6 @@ impl Shot {
 
 impl Drawable for Shot {
     fn draw(&self, frame: &mut crate::frame::Frame) {
-        frame[self.x_index][self.y_index] = "|";
+        frame[self.x_index][self.y_index] = SHOT_FORM;
     }
 }

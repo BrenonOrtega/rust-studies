@@ -35,5 +35,5 @@ pub trait Drawable {
 }
 
 pub trait Updatable {
-    fn update(&mut self, delta: &Duration);
+    fn update(&mut self, delta: &Duration, frame: &Frame);
 }
