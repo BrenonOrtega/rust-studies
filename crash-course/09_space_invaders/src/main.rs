@@ -73,36 +73,45 @@ fn game_loop(audio: &mut Audio) {
             }
         }
         
-        
         instant = Instant::now();
         
-        let mut frame = new_frame();
+        let mut frame: Frame = new_frame();
 
-        let drawables: Vec<&dyn Drawable> = vec![&player, &invaders];
-        drawables.iter().for_each(|a| a.draw(&mut frame));
-        
-        update_all(vec![&mut player, &mut invaders], delta, &frame);
+        update_all(vec![&mut player, &mut invaders], delta);
+        draw_all(vec![&player, &invaders], &mut frame);
 
-        let last_row: Vec<&str> = frame[NUMBER_ROWS - 1].iter().cloned().collect();
-
-        for i in last_row.iter() {
-            if INVADERS_FORMS.iter().any(|form| form == i) {
-                audio.play("lose");
-                break 'gameloop;
-            }
-        }
         let _ = tx.send(frame);
-        thread::sleep(Duration::from_millis(10));
+
+        if player.has_killed_any_invader(&mut invaders) {
+            audio.play("explode");
+        }
+
+        if invaders.are_all_dead() { 
+            audio.play("win");
+            thread::sleep(Duration::from_millis(500));
+            break 'gameloop;
+        }
+
+        if invaders.is_any_at_bottom() {
+            audio.play("lose");
+            thread::sleep(Duration::from_millis(500));
+            break 'gameloop;
+        }
+
+        thread::sleep(Duration::from_millis(20));
     }  
 
     drop(tx);
     thread.join().unwrap();
 }
 
+fn draw_all(drawables: Vec<&dyn Drawable>, frame: &mut Frame) {
+    drawables.iter().for_each(|a| a.draw(frame));
+}
 
-fn update_all(mut updatables: Vec<&mut dyn Updatable>, delta: Duration, frame: &Frame) {
+fn update_all(mut updatables: Vec<&mut dyn Updatable>, delta: Duration) {
     updatables.iter_mut()
-        .for_each(|updatable| updatable.update(&delta, &frame));
+        .for_each(|updatable| updatable.update(delta));
 }
 
 fn handle_key_press(event: Event, audio: &mut Audio, player: &mut Player) -> ControlFlow<()> {

@@ -2,11 +2,11 @@ use std::time::Duration;
 
 use rusty_time::Timer;
 
-use crate::{frame::Drawable, SHOT_FORM};
+use crate::{frame::Drawable, SHOT_FORM, render::Updatable};
 
 pub struct Shot {
-    x_index: usize,
-    y_index: usize,
+    pub x_index: usize,
+    pub y_index: usize,
     exploding: bool,
     timer: Timer,
 }
@@ -21,25 +21,37 @@ impl Shot {
         }
     }
 
-    pub fn update(&mut self, delta: Duration) {
-        self.timer.update(delta);
-
-        if !self.timer.ready || self.exploding { return }
-
-        if self.y_index > 0 {
-            self.y_index -= 1;
-        }
-
-        self.timer.reset(); 
+    pub fn dead(&self) -> bool {
+        (self.exploding && self.timer.ready) || self.y_index == 0
     }
 
-    pub fn dead(&self) -> bool {
-        (self.y_index == 0) || (self.exploding && self.timer.ready)  
+    pub(crate) fn explode(&mut self) {
+        self.exploding = true;
     }
 }
 
 impl Drawable for Shot {
     fn draw(&self, frame: &mut crate::frame::Frame) {
-        frame[self.x_index][self.y_index] = SHOT_FORM;
+        frame[self.x_index][self.y_index] = if !self.exploding { SHOT_FORM } else { "*" };
+    }
+}
+
+impl Updatable for Shot {
+    fn update(&mut self, delta: Duration) {
+         self.timer.update(delta);
+
+        if !self.timer.ready || self.exploding { return }
+
+        if self.y_index > 0 {
+            self.y_index -= 1;
+        } else {
+            self.explode();
+        }
+
+        if self.y_index == 0 {
+            self.explode();
+        }
+
+        self.timer.reset(); 
     }
 }

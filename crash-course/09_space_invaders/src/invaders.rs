@@ -1,17 +1,16 @@
-use std::{cmp::max, time::Duration, thread::{Thread, self}, ops::Index};
+use std::{cmp::max, time::Duration};
 
 use rusty_time::Timer;
 
 use crate::{
     frame::{Drawable, Frame},
     render::Updatable,
-    NUMBER_COLUMNS, INVADERS_FORMS, SHOT_FORM,
+    NUMBER_COLUMNS, INVADERS_FORMS, NUMBER_ROWS
 };
 
 pub struct Invader {
     x_index: usize,
     y_index: usize,
-    dead: bool,
 }
 
 impl Invader {
@@ -19,7 +18,6 @@ impl Invader {
         Invader {
             x_index,
             y_index,
-            dead: false,
         }
     }
 
@@ -48,10 +46,6 @@ impl Invader {
         }
 
         indexes
-    }
-
-    fn die(&mut self) {
-        self.dead = true;
     }
 }
 
@@ -97,17 +91,30 @@ impl Invaders {
             .for_each(|invader| invader.y_index += 1);
     }
 
-    fn kill_invaders(&mut self, frame: &Frame) {
-        for invader in self.list.iter_mut() {
-            let beneath_row_index: usize = invader.y_index + 1;
-            let right_beneath: &str = frame[invader.x_index][beneath_row_index];
-
-            if right_beneath == SHOT_FORM {
-                invader.die();
-            }
+    pub fn try_kill_invaders_at(&mut self, x: usize, y: usize) -> bool {
+        let mut enumerator = self.list.iter_mut().enumerate();
+        if let Some((index, _)) = enumerator
+                                            .find(|(_, i)| 
+                                                i.x_index == x && i.y_index == y) {
+            self.list.remove(index);
+            
+            return true; 
         }
 
-        self.list.retain(|i| !i.dead);
+        false
+    }
+
+    pub fn is_any_at_bottom(&self) -> bool {
+        let max_invader_index = self.list.iter().map(|i| i.y_index).max().unwrap_or(0);
+        if max_invader_index >= (NUMBER_ROWS - 1) {
+            return true;
+        }
+        
+        false
+    }
+
+    pub fn are_all_dead(&self) -> bool {
+        self.list.iter().len() == 0
     }
 }
 
@@ -124,16 +131,14 @@ impl Drawable for Invaders {
 }
 
 impl Updatable for Invaders {
-    fn update(&mut self, delta: &Duration, frame: &Frame) {
-        self.timer.update(*delta);
+    fn update(&mut self, delta: Duration) {
+        self.timer.update(delta);
 
         if !self.timer.ready {
             return;
         }
 
         self.timer.reset();
-        
-        self.kill_invaders(frame);
         
         if !self.go_downwards {
             self.move_invaders();

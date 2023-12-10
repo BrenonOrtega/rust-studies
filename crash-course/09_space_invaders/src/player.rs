@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use crate::frame::{Frame, Drawable};
+use crate::invaders::Invaders;
 use crate::render::Updatable;
 use crate::shot::Shot;
 use crate::{NUMBER_ROWS, NUMBER_COLUMNS, PLAYER_FORM};
@@ -42,6 +43,18 @@ impl Player {
             false
         }
     }
+
+    pub fn has_killed_any_invader(&mut self, invaders: &mut Invaders) -> bool {
+        self.shots.iter_mut().any(|shot| {
+            let killed = invaders.try_kill_invaders_at(shot.x_index, shot.y_index);
+
+            if killed {
+                shot.explode();
+            }
+
+            killed
+        })
+    }
 }
 
 impl Drawable for Player {
@@ -55,10 +68,10 @@ impl Drawable for Player {
 }
 
 impl Updatable for Player {
-    fn update(&mut self, delta: &Duration, frame: &Frame) {
+    fn update(&mut self, delta: Duration) {
         self.shots.iter_mut()
-            .for_each(|shot| shot.update(*delta));
+            .for_each(|shot| shot.update(delta));
         
-        self.shots.retain(|shot| !shot.dead());
+        self.shots.retain(|shot: &Shot| !shot.dead());
     }
 }
