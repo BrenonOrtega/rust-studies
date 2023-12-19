@@ -30,13 +30,26 @@ impl FeatureManager for MySqlFeatureManager {
             None => None,
         }
     }
+
+    fn load(&mut self, features: &mut Vec<FeatureToggle>) -> () {
+        insert_features(&features);
+        if self.features.len() > 0 {
+            self.features.append(features);
+        }
+
+        todo!()
+    }
+}
+
+fn insert_features(features: &[FeatureToggle]) -> () {
+    todo!()
 }
 
 #[cfg(feature = "mysql")]
 pub enum FeatureStatuses {
     HasAny(Arc<dyn FeatureManager>),
+    Empty(Arc<dyn FeatureManager>),
     FailedInitialization,
-    Empty
 }
 
 #[cfg(feature = "mysql")]
@@ -58,17 +71,17 @@ pub fn use_mysql_feature_manager(connection_string: &str) -> FeatureStatuses {
                 state TINYINT NOT NULL);"#).unwrap();
 
     let result: Result<Vec<FeatureToggle>, mysql::Error> 
-        = conn.query_map("SELECT name, state FROM feature_toggles;", |(name, state)| FeatureToggle::new(name, state));
+        = conn.query_map("SELECT name, state FROM feature_toggles;",
+            |(name, state)| FeatureToggle::new(name, state));
 
     let result = match result {
         Ok(features) => {
             if features.len() > 0 {
-                let my_sql_feature_manager: Arc<dyn FeatureManager> 
-                    = Arc::new(MySqlFeatureManager::new(features));
+                let my_sql_feature_manager: Arc<dyn FeatureManager> = Arc::new(MySqlFeatureManager::new(features));
                 FeatureStatuses::HasAny(my_sql_feature_manager)
             }
             else {
-                FeatureStatuses::Empty
+                FeatureStatuses::Empty(Arc::new(MySqlFeatureManager::new(Vec::new())))
             }
         },
         Err(e) => {
