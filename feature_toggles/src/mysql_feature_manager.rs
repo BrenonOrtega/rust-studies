@@ -1,8 +1,5 @@
 use std::sync::Arc;
-use std::fmt::Debug;
-
 use mysql::prelude::Queryable;
-
 use crate::{feature_toggles::{FeatureToggle, FeatureState}, 
     feature_manager::FeatureManager};
 
@@ -36,19 +33,10 @@ impl FeatureManager for MySqlFeatureManager {
 }
 
 #[cfg(feature = "mysql")]
-#[derive(Debug)]
 pub enum FeatureStatuses {
     HasAny(Arc<dyn FeatureManager>),
     FailedInitialization,
     Empty
-}
-
-impl fmt::Debug for FeatureStatuses {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result {
-        match self {
-            FeatureStatuses::HasAny(_) => write!(f, "FeatureStatuses::HasAny(...)"),
-        }
-    }
 }
 
 #[cfg(feature = "mysql")]
@@ -56,7 +44,7 @@ pub fn use_mysql_feature_manager(connection_string: &str) -> FeatureStatuses {
     use mysql::Pool;
 
     let pool = Pool::new(connection_string).unwrap();
-    let mut conn_result = pool.get_conn();
+    let conn_result = pool.get_conn();
     
     if let Err(err) = conn_result {
         println!("{:?}", err);
@@ -83,7 +71,8 @@ pub fn use_mysql_feature_manager(connection_string: &str) -> FeatureStatuses {
                 FeatureStatuses::Empty
             }
         },
-        Err(_) => {
+        Err(e) => {
+            println!("{}", e);
             FeatureStatuses::FailedInitialization
         }
     };

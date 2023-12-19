@@ -7,5 +7,8 @@ fn should_create_table_correctly() {
     let conn_string = "mysql://user:password@localhost:3307/db";
     let option = use_mysql_feature_manager(conn_string);
 
-    assert_eq!(option, FeatureStatuses::Empty);
+    match option {
+        FeatureStatuses::Empty => assert!(true, "Database does not have any feature flag"),
+        _ => assert!(false, "Test failed")
+    }
 }
