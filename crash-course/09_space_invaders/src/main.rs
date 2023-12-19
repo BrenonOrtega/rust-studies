@@ -16,12 +16,12 @@ use space_invaders::{
     frame::{Frame, new_frame, Drawable},
     render::{self, render, Updatable},
     player::Player,
-    invaders::Invaders, NUMBER_ROWS, INVADERS_FORMS};
+    invaders::Invaders};
 
 fn main() -> Result<(), Error> {
-    let mut audio = setup_audio();
-    let stdout = setup_game_screen();
-    
+    let mut audio: Audio = setup_audio();
+    let stdout: Stdout = setup_game_screen();
+
     thread::sleep(Duration::from_millis(4_000));
     audio.play("startup");
 
@@ -42,6 +42,7 @@ fn setup_audio() -> rusty_audio::prelude::Audio {
         ("lose","lose.wav"), 
         ].iter()
         .for_each(|track: &(&str, &str)| audio.add(track.0, track.1));
+
     audio
 }
 
@@ -54,10 +55,9 @@ fn setup_game_screen() -> Stdout {
     stdout
 }
 
-
 fn game_loop(audio: &mut Audio) {
     let (thread, tx) = get_frame_rendering_sender();
-    
+
     let mut player = Player::new();
     let mut invaders = Invaders::new();
     let mut instant = Instant::now();
@@ -72,9 +72,9 @@ fn game_loop(audio: &mut Audio) {
                 break 'gameloop;
             }
         }
-        
+
         instant = Instant::now();
-        
+
         let mut frame: Frame = new_frame();
 
         update_all(vec![&mut player, &mut invaders], delta);
@@ -138,7 +138,6 @@ fn handle_key_press(event: Event, audio: &mut Audio, player: &mut Player) -> Con
 
     ControlFlow::Continue(())
 }
-
 
 fn get_frame_rendering_sender() -> (JoinHandle<()>, Sender<Frame>) {
     let (handle_tx, handle_rx) = mpsc::channel::<Frame>();

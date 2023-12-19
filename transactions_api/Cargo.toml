@@ -1,0 +1,13 @@
+[package]
+name = "transactions_api"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix = "0.13.1"
+config = "0.13.4"
+diesel = { version = "2.1.4", features = ["postgres"] }
+serde = "1.0.193"
+uuid = "1.6.1"
