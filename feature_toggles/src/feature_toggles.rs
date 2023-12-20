@@ -7,23 +7,14 @@ pub trait FeatureState {
 #[derive(Debug, PartialEq, Eq)]
 pub struct FeatureToggle {
     pub name: String,
-    state: bool,
+    pub(crate) state: bool,
 }
 
 impl FeatureToggle {
-    pub(crate) fn new(name: String, state: bool) -> Self {
-        Self {
-            name, 
-            state
-        }
-    }
-}
-
-impl Default for FeatureToggle {
-    fn default() -> Self {
+    pub fn new(name: String, state: bool) -> Self {
         FeatureToggle {
-            name: "DEFAULT_FEATURE".to_string(),
-            state: false
+            name,
+            state
         }
     }
 }

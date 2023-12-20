@@ -1,5 +1,6 @@
 use std::sync::Arc;
 use mysql::prelude::Queryable;
+use mysql::PooledConn;
 use crate::{feature_toggles::{FeatureToggle, FeatureState}, 
     feature_manager::FeatureManager};
 
@@ -30,19 +31,6 @@ impl FeatureManager for MySqlFeatureManager {
             None => None,
         }
     }
-
-    fn load(&mut self, features: &mut Vec<FeatureToggle>) -> () {
-        insert_features(&features);
-        if self.features.len() > 0 {
-            self.features.append(features);
-        }
-
-        todo!()
-    }
-}
-
-fn insert_features(features: &[FeatureToggle]) -> () {
-    todo!()
 }
 
 #[cfg(feature = "mysql")]
@@ -53,7 +41,7 @@ pub enum FeatureStatuses {
 }
 
 #[cfg(feature = "mysql")]
-pub fn use_mysql_feature_manager(connection_string: &str) -> FeatureStatuses {
+pub fn use_mysql_feature_manager(connection_string: &str, features: Vec<FeatureToggle>) -> FeatureStatuses {
     use mysql::Pool;
 
     let pool = Pool::new(connection_string).unwrap();
@@ -66,12 +54,40 @@ pub fn use_mysql_feature_manager(connection_string: &str) -> FeatureStatuses {
 
     let mut conn = conn_result.unwrap();
 
-    conn.query_drop(r#"CREATE TABLE IF NOT EXISTS feature_toggles (
-                name VARCHAR(100) PRIMARY KEY NOT NULL,
-                state TINYINT NOT NULL);"#).unwrap();
+    conn.query_drop(r#"
+                CREATE DATABASE IF NOT EXISTS features_management;
+                CREATE TABLE IF NOT EXISTS features_management.feature_toggles (
+                    name VARCHAR(100) PRIMARY KEY NOT NULL,
+                    state TINYINT NOT NULL);"#).unwrap();
 
+    if let Err(e) = insert_features(&mut conn, features) {
+        println!("{:?}", e);
+        return FeatureStatuses::FailedInitialization;   
+    }
+
+    load_feature_manager(conn)
+}
+
+#[cfg(feature = "mysql")]
+fn insert_features(conn: &mut PooledConn, features: Vec<FeatureToggle>) -> Result<(), mysql::Error> {
+    if features.len() == 0 {
+        return Ok(());
+    }
+
+    let insert = "INSERT INTO features_management.feature_toggles (name, state) VALUES";
+    let statements = features.iter()
+        .map(|feature| format!("(\'{}\', {})", feature.name, feature.state))
+        .reduce(|initial, next| format!("{}, {}", initial, next))
+        .unwrap();
+    
+    let sql = format!("{} {}", insert, statements);
+
+    conn.query_drop(sql)
+}
+
+fn load_feature_manager(mut conn: mysql::PooledConn) -> FeatureStatuses {
     let result: Result<Vec<FeatureToggle>, mysql::Error> 
-        = conn.query_map("SELECT name, state FROM feature_toggles;",
+        = conn.query_map("SELECT name, state FROM features_management.feature_toggles;",
             |(name, state)| FeatureToggle::new(name, state));
 
     let result = match result {
