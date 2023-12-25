@@ -34,14 +34,19 @@ impl FeatureManager for MySqlFeatureManager {
 }
 
 #[cfg(feature = "mysql")]
-pub enum FeatureStatuses {
+pub enum TogglesStatus {
     HasAny(Arc<dyn FeatureManager>),
     Empty(Arc<dyn FeatureManager>),
     FailedInitialization,
 }
 
 #[cfg(feature = "mysql")]
-pub fn use_mysql_feature_manager(connection_string: &str, features: Vec<FeatureToggle>) -> FeatureStatuses {
+pub fn use_mysql_feature_manager(connection_string: &str, features: Vec<FeatureToggle>) -> TogglesStatus {
+    use_mysql_feature_manager_on("features_management", connection_string, features)
+}
+
+#[cfg(feature = "mysql")]
+pub fn use_mysql_feature_manager_on(database: &str, connection_string: &str,  features: Vec<FeatureToggle>) -> TogglesStatus {
     use mysql::Pool;
 
     let pool = Pool::new(connection_string).unwrap();
@@ -49,32 +54,32 @@ pub fn use_mysql_feature_manager(connection_string: &str, features: Vec<FeatureT
     
     if let Err(err) = conn_result {
         println!("{:?}", err);
-        return FeatureStatuses::FailedInitialization;
+        return TogglesStatus::FailedInitialization;
     }
 
     let mut conn = conn_result.unwrap();
 
-    conn.query_drop(r#"
-                CREATE DATABASE IF NOT EXISTS features_management;
-                CREATE TABLE IF NOT EXISTS features_management.feature_toggles (
+    conn.query_drop(format!(r#"
+                CREATE DATABASE IF NOT EXISTS {};
+                CREATE TABLE IF NOT EXISTS {}.feature_toggles (
                     name VARCHAR(100) PRIMARY KEY NOT NULL,
-                    state TINYINT NOT NULL);"#).unwrap();
+                    state TINYINT NOT NULL);"#, database, database)).unwrap();
 
-    if let Err(e) = insert_features(&mut conn, features) {
+    if let Err(e) = insert_features(database, &mut conn, features) {
         println!("{:?}", e);
-        return FeatureStatuses::FailedInitialization;   
+        return TogglesStatus::FailedInitialization;   
     }
 
-    load_feature_manager(conn)
+    load_feature_manager(database, conn)
 }
 
 #[cfg(feature = "mysql")]
-fn insert_features(conn: &mut PooledConn, features: Vec<FeatureToggle>) -> Result<(), mysql::Error> {
+fn insert_features(database: &str, conn: &mut PooledConn, features: Vec<FeatureToggle>) -> Result<(), mysql::Error> {
     if features.len() == 0 {
         return Ok(());
     }
 
-    let insert = "INSERT INTO features_management.feature_toggles (name, state) VALUES";
+    let insert = format!("INSERT IGNORE INTO {}.feature_toggles (name, state) VALUES", database);
     let statements = features.iter()
         .map(|feature| format!("(\'{}\', {})", feature.name, feature.state))
         .reduce(|initial, next| format!("{}, {}", initial, next))
@@ -85,24 +90,24 @@ fn insert_features(conn: &mut PooledConn, features: Vec<FeatureToggle>) -> Resul
     conn.query_drop(sql)
 }
 
-fn load_feature_manager(mut conn: mysql::PooledConn) -> FeatureStatuses {
+fn load_feature_manager(database: &str, mut conn: mysql::PooledConn) -> TogglesStatus {
     let result: Result<Vec<FeatureToggle>, mysql::Error> 
-        = conn.query_map("SELECT name, state FROM features_management.feature_toggles;",
+        = conn.query_map(format!("SELECT name, state FROM {}.feature_toggles;", database),
             |(name, state)| FeatureToggle::new(name, state));
 
     let result = match result {
         Ok(features) => {
             if features.len() > 0 {
                 let my_sql_feature_manager: Arc<dyn FeatureManager> = Arc::new(MySqlFeatureManager::new(features));
-                FeatureStatuses::HasAny(my_sql_feature_manager)
+                TogglesStatus::HasAny(my_sql_feature_manager)
             }
             else {
-                FeatureStatuses::Empty(Arc::new(MySqlFeatureManager::new(Vec::new())))
+                TogglesStatus::Empty(Arc::new(MySqlFeatureManager::new(Vec::new())))
             }
         },
         Err(e) => {
             println!("{}", e);
-            FeatureStatuses::FailedInitialization
+            TogglesStatus::FailedInitialization
         }
     };
 
