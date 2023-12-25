@@ -1,0 +1,6 @@
+[project]
+name = "crash-course-2-documentation"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
