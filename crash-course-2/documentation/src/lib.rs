@@ -49,8 +49,8 @@ pub const BURNT_ORANGE: i32 = 13;
 /// At least not by default. But if you pass the correct option in, it will magically appear!
 #[allow(dead_code)] // to silence the warning
 enum PrivateEnum {
-    /// For Halloween. To be lit by candlelight.
-    JackOLantern,
+    /// Very nice to eat, good for cutting phases.
+    VapormadePumpkimCubes,
     /// For dessert during North American winter holidays.
     PumpkinPie,
 }
