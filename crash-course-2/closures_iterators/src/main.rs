@@ -33,7 +33,7 @@ fn main() {
 
     let mut numbers = vec![1, 2, 3, 4];
     let mut clone_for_challenge = numbers.clone();
-    for x in numbers.iter_mut() {
+    for x in &mut numbers {
          *x *= 3;
     }
     println!("{:?}", numbers); // should print [3, 6, 9, 12]
